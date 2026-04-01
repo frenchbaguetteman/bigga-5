@@ -1,5 +1,6 @@
 #include "EZ-Template/util.hpp"
 #include "main.h"
+#include "pros/motors.h"
 #include "subsystems.hpp"
 
 /////
@@ -245,7 +246,7 @@ void rightAWP(){
   chassis.pid_wait();*/
   chassis.pid_drive_set(15_in, DRIVE_SPEED, true);
   chassis.pid_wait_quick();
-  chassis.pid_turn_set(-137.5_deg, TURN_SPEED);
+  chassis.pid_turn_set(-135.5_deg, TURN_SPEED);
   chassis.pid_wait();
   top.set_value(0);
   intakeMotors.move(127);
@@ -532,12 +533,16 @@ void skills() {
 
 void shitty_skills() {
   reset_local_odom();
-  intakeMotors.move(127);
+  intakeMotors.move(-127);
   top.set_value(1);
   chassis.pid_drive_set(-20_in, DRIVE_SPEED, true);
   chassis.pid_wait();
-  chassis.pid_drive_set(40_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
+  chassis.pid_drive_set(65_in, DRIVE_SPEED);
+  chassis.pid_wait_until(40);
+  chassis.drive_set(127, 127);
+  pros::delay(500);
+  chassis.drive_set(0,0);
+  chassis.drive_brake_set(pros::E_MOTOR_BRAKE_BRAKE);
 }
 
 ///

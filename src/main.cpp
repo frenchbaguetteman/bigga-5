@@ -164,6 +164,7 @@ void initialize() {
     {"Skills", skills},
     {"Big Bertha", rightActualAWP},
     {"Right AWP", rightAWP},
+    {"crap skills", shitty_skills},
     
       {"Red Positive", red_positive_auton},
       {"Red Negative", red_negative_auton},

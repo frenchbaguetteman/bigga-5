@@ -26,6 +26,7 @@ void left7wing();
 void skills();
 void rightAWP();
 void rightActualAWP();
+void shitty_skills();
 
 // ── Dispatcher: routes selected Auton enum → correct function ─────────────────
 void run_selected_auton();
