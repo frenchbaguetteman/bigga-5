@@ -2,6 +2,7 @@
 #include "main.h"
 #include "pros/motors.h"
 #include "subsystems.hpp"
+#include "controllers/motion_controller.hpp"
 
 /////
 // For installation, upgrading, documentations, and tutorials, check out our website!
@@ -730,6 +731,104 @@ void odom_drive_example() {
 
   chassis.pid_odom_set(-12_in, DRIVE_SPEED);
   chassis.pid_wait();
+}
+
+///
+// RAMSETE single-move example
+///
+void ramsete_move_example() {
+  reset_local_odom();
+
+  // Create a RAMSETE controller attached to the chassis
+  MotionController mc(chassis, MotionController::Type::RAMSETE);
+
+  // Drive forward 24 inches at 50 in/s, ending at 0° heading
+  mc.moveTo(0, 24, 0, 50);
+
+  // Drive diagonally to (18, 36) facing 45° at 60 in/s
+  mc.moveTo(18, 36, 45, 60);
+
+  // Drive back to origin facing 180°
+  mc.moveTo(0, 0, 180, 50);
+}
+
+///
+// LTV single-move example
+///
+void ltv_move_example() {
+  reset_local_odom();
+
+  // Create an LTV controller — same API, different feedback law
+  MotionController mc(chassis, MotionController::Type::LTV);
+
+  // Tighter settle tolerance for LTV (it holds position better at low speed)
+  mc.setSettleTolerance(0.75, 2.0);
+
+  // Forward 24 inches
+  mc.moveTo(0, 24, 0, 50);
+
+  // Strafe-like diagonal to (12, 36) at 45° heading
+  mc.moveTo(12, 36, 45, 55);
+
+  // Return home
+  mc.moveTo(0, 0, 0, 50);
+}
+
+///
+// RAMSETE multi-waypoint path example
+///
+void ramsete_path_example() {
+  reset_local_odom();
+
+  MotionController mc(chassis);  // defaults to RAMSETE
+  mc.setMaxAccel(60.0);          // gentler accel for demo
+
+  // Follow an L-shaped path:
+  //   start → (0,24) → (24,24) → (24,48) facing 0°
+  // NAN theta = auto-aim toward the next point
+  mc.followPath({
+      {0,   24, NAN, 60},    // straight ahead
+      {24,  24, NAN, 50},    // turn right
+      {24,  48, 0,   40},    // forward, arrive facing 0°
+  });
+}
+
+///
+// LTV multi-waypoint path example
+///
+void ltv_path_example() {
+  reset_local_odom();
+
+  MotionController mc(chassis, MotionController::Type::LTV);
+
+  // S-curve path
+  mc.followPath({
+      {8,   16, NAN, 55},
+      {-8,  32, NAN, 55},
+      {0,   48, 0,   40},
+  });
+
+  // Drive back using a single moveTo
+  mc.moveTo(0, 0, 180, 50);
+}
+
+///
+// Mixed: RAMSETE path then PID turn (shows interop with EZ-Template)
+///
+void ramsete_with_pid_example() {
+  reset_local_odom();
+
+  MotionController mc(chassis);
+
+  // Use RAMSETE to drive to a scoring position
+  mc.moveTo(18, 30, 0, 60);
+
+  // Seamlessly switch back to EZ-Template PID for a precise turn
+  chassis.pid_turn_set(90_deg, TURN_SPEED);
+  chassis.pid_wait();
+
+  // Back to RAMSETE for the next leg
+  mc.moveTo(36, 30, 90, 50);
 }
 
 ///
