@@ -8,6 +8,8 @@
  *   v  = v_d·cos(e_θ) + k·e_x
  *   ω  = ω_d + k·e_θ + β·v_d·sinc(e_θ)·e_y
  *
+ * Accepts EZ-Template convention inputs: inches, degrees (0°=+Y, CW positive).
+ *
  * Usage:
  *   RamseteController ctrl;  // or with custom zeta/beta/track_width
  *   auto [left, right] = ctrl.calculate(cx, cy, ctheta,
@@ -56,32 +58,37 @@ public:
     /**
      * Compute left/right motor commands.
      *
-     * @param cx/cy/ctheta   current pose (inches, inches, radians)
-     * @param dx/dy/dtheta   desired  pose (inches, inches, radians)
+     * @param cx/cy/ctheta   current pose — inches / degrees (EZ-Template odom)
+     * @param dx/dy/dtheta   desired  pose — inches / degrees
      * @param vRef           desired linear velocity  (in/s)
-     * @param omegaRef       desired angular velocity (rad/s)
+     * @param omegaRef       desired angular velocity (deg/s)
      */
     DiffSpeeds calculate(float cx, float cy, float ctheta,
                          float dx, float dy, float dtheta,
                          float vRef, float omegaRef) {
         using namespace ramsete_detail;
 
-        // Error in robot frame
-        float cosT  = std::cos(-ctheta);
-        float sinT  = std::sin(-ctheta);
-        float dxW   = dx - cx;
-        float dyW   = dy - cy;
-        m_ex    =  cosT * dxW - sinT * dyW;
-        m_ey    =  sinT * dxW + cosT * dyW;
-        m_eth   = wrapAngle(dtheta - ctheta);
+        // Convert EZ-Template degrees to radians for internal math
+        constexpr float kDeg2Rad = 3.14159265f / 180.0f;
+        float ctRad       = ctheta   * kDeg2Rad;
+        float omegaRefRad = omegaRef * kDeg2Rad;
+
+        // Error in robot frame  (EZ convention: 0°=+Y, CW positive)
+        float sinT = std::sin(ctRad);
+        float cosT = std::cos(ctRad);
+        float dxW  = dx - cx;
+        float dyW  = dy - cy;
+        m_ex    =  sinT * dxW + cosT * dyW;       // forward error
+        m_ey    =  cosT * dxW - sinT * dyW;       // lateral error (right +)
+        m_eth   = wrapAngle((dtheta - ctheta) * kDeg2Rad);
 
         // Gain k
         float k = 2.0f * m_zeta *
-                  std::sqrt(omegaRef * omegaRef + m_beta * vRef * vRef);
+                  std::sqrt(omegaRefRad * omegaRefRad + m_beta * vRef * vRef);
 
         // RAMSETE commanded velocities
-        float v     = vRef     * std::cos(m_eth) + k * m_ex;
-        float omega = omegaRef + k * m_eth + m_beta * vRef * sinc(m_eth) * m_ey;
+        float v     = vRef        * std::cos(m_eth) + k * m_ex;
+        float omega = omegaRefRad + k * m_eth + m_beta * vRef * sinc(m_eth) * m_ey;
 
         m_lastV     = v;
         m_lastOmega = omega;
@@ -102,8 +109,9 @@ private:
 
     DiffSpeeds toMotorCommands(float v, float omega) const {
         float tw2  = m_trackWidthIn / 2.0f;
-        float vL   = v - omega * tw2;
-        float vR   = v + omega * tw2;
+        // CW-positive convention: positive ω → left faster, right slower
+        float vL   = v + omega * tw2;
+        float vR   = v - omega * tw2;
         float norm = std::max({1.0f, std::fabs(vL) / m_maxVelInps,
                                      std::fabs(vR) / m_maxVelInps});
         int left  = static_cast<int>(std::round(127.0f * vL /

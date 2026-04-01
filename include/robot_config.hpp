@@ -152,8 +152,9 @@ inline constexpr float INTAKE_PID_KD   = 0.0f;
 inline constexpr float INTAKE_PID_ICAP = 0.0f;
 
 // ── RAMSETE path-following parameters ────────────────────────────────────────
-inline constexpr float RAMSETE_ZETA = 0.4f;
-inline constexpr float RAMSETE_BETA = 45.0f;
+inline constexpr float RAMSETE_ZETA = 0.7f;
+// β_inches = β_meters × (m/in)² — equivalent to the standard β=2.0 in metric
+inline constexpr float RAMSETE_BETA = 2.0f * IN_TO_M * IN_TO_M;
 
 // ── LTV unicycle parameters ──────────────────────────────────────────────────
 inline constexpr float LTV_Q_X           = 1.0f;
@@ -163,7 +164,7 @@ inline constexpr float LTV_R_V           = 1.0f;
 inline constexpr float LTV_R_OMEGA       = 1.0f;
 inline constexpr float LTV_DT_S          = 0.02f;
 inline constexpr float LTV_MAX_VEL_INPS  = MAX_SPEED_INPS;
-inline constexpr float LTV_LOOKUP_STEP   = 0.01f;
+inline constexpr float LTV_LOOKUP_STEP   = 1.0f;
 inline constexpr float LTV_TERMINAL_SCALE = 1.0f;
 
 // ── Drivetrain feedforward model ─────────────────────────────────────────────
