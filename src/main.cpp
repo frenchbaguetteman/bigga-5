@@ -173,6 +173,12 @@ void initialize() {
       
       {"Turn Test", turn_example},
       {"Odom Test", odom_drive_example},
+
+      {"RAMSETE Move", ramsete_move_example},
+      {"LTV Move", ltv_move_example},
+      {"RAMSETE Path", ramsete_path_example},
+      {"LTV Path", ltv_path_example},
+      {"RAMSETE+PID", ramsete_with_pid_example},
   });
   // Load EZ-Template selector state from SD without starting the default LLEMU UI.
   ez::as::auton_selector_initialize();

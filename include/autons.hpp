@@ -16,6 +16,13 @@ void odom_boomerang_example();
 void odom_boomerang_injected_pure_pursuit_example();
 void measure_offsets();
 
+// ── LTV / RAMSETE controller examples ────────────────────────────────────────
+void ramsete_move_example();
+void ltv_move_example();
+void ramsete_path_example();
+void ltv_path_example();
+void ramsete_with_pid_example();
+
 // ── Competition routines ──────────────────────────────────────────────────────
 void red_positive_auton();
 void red_negative_auton();

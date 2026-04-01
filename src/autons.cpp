@@ -733,6 +733,112 @@ void odom_drive_example() {
 }
 
 ///
+// RAMSETE single-move example
+///
+void ramsete_move_example() {
+  reset_local_odom();
+  chassis.odom_feedback_set(ez::RAMSETE_FEEDBACK);
+
+  // Drive forward 24 inches, ending at 0° heading
+  chassis.pid_odom_set({{0_in, 24_in, 0_deg}, fwd, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  // Drive diagonally to (18, 36) facing 45°
+  chassis.pid_odom_set({{18_in, 36_in, 45_deg}, fwd, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  // Drive back to origin facing 180°
+  chassis.pid_odom_set({{0_in, 0_in, 180_deg}, rev, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  chassis.odom_feedback_set(ez::PID_FEEDBACK);
+}
+
+///
+// LTV single-move example
+///
+void ltv_move_example() {
+  reset_local_odom();
+  chassis.odom_feedback_set(ez::LTV_FEEDBACK);
+
+  // Forward 24 inches
+  chassis.pid_odom_set({{0_in, 24_in, 0_deg}, fwd, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  // Diagonal to (12, 36) at 45° heading
+  chassis.pid_odom_set({{12_in, 36_in, 45_deg}, fwd, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  // Return home
+  chassis.pid_odom_set({{0_in, 0_in, 0_deg}, rev, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  chassis.odom_feedback_set(ez::PID_FEEDBACK);
+}
+
+///
+// RAMSETE multi-waypoint path example
+///
+void ramsete_path_example() {
+  reset_local_odom();
+  chassis.odom_feedback_set(ez::RAMSETE_FEEDBACK);
+
+  // Follow an L-shaped path using pure pursuit with RAMSETE feedback
+  chassis.pid_odom_set({{{0_in, 24_in}, fwd, DRIVE_SPEED},
+                        {{24_in, 24_in}, fwd, DRIVE_SPEED},
+                        {{24_in, 48_in, 0_deg}, fwd, 80}},
+                       true);
+  chassis.pid_wait();
+
+  chassis.odom_feedback_set(ez::PID_FEEDBACK);
+}
+
+///
+// LTV multi-waypoint path example
+///
+void ltv_path_example() {
+  reset_local_odom();
+  chassis.odom_feedback_set(ez::LTV_FEEDBACK);
+
+  // S-curve path using pure pursuit with LTV feedback
+  chassis.pid_odom_set({{{8_in, 16_in}, fwd, DRIVE_SPEED},
+                        {{-8_in, 32_in}, fwd, DRIVE_SPEED},
+                        {{0_in, 48_in, 0_deg}, fwd, 80}},
+                       true);
+  chassis.pid_wait();
+
+  // Drive back
+  chassis.pid_odom_set({{0_in, 0_in, 180_deg}, rev, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  chassis.odom_feedback_set(ez::PID_FEEDBACK);
+}
+
+///
+// Mixed: RAMSETE path then PID turn (shows interop with EZ-Template)
+///
+void ramsete_with_pid_example() {
+  reset_local_odom();
+
+  // Use RAMSETE to drive to a scoring position
+  chassis.odom_feedback_set(ez::RAMSETE_FEEDBACK);
+  chassis.pid_odom_set({{18_in, 30_in, 0_deg}, fwd, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  // Switch back to PID for a precise turn
+  chassis.odom_feedback_set(ez::PID_FEEDBACK);
+  chassis.pid_turn_set(90_deg, TURN_SPEED);
+  chassis.pid_wait();
+
+  // Back to RAMSETE for the next leg
+  chassis.odom_feedback_set(ez::RAMSETE_FEEDBACK);
+  chassis.pid_odom_set({{36_in, 30_in, 90_deg}, fwd, DRIVE_SPEED}, true);
+  chassis.pid_wait();
+
+  chassis.odom_feedback_set(ez::PID_FEEDBACK);
+}
+
+///
 // Odom Pure Pursuit
 ///
 void odom_pure_pursuit_example() {

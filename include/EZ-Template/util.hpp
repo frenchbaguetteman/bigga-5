@@ -96,6 +96,16 @@ enum drive_directions { FWD = 0,
 /**
  * Enum for turn types.
  */
+/**
+ * Enum for odom feedback controller type.
+ */
+enum e_odom_feedback { PID_FEEDBACK = 0,
+                       LTV_FEEDBACK = 1,
+                       RAMSETE_FEEDBACK = 2 };
+
+/**
+ * Enum for turn types.
+ */
 enum e_angle_behavior { raw = 0,
                         left_turn = 1,
                         LEFT_TURN = 1,

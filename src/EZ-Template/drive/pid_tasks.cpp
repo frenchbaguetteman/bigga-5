@@ -6,9 +6,16 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
+#include "controllers/ltv_controller.hpp"
+#include "controllers/ramsete_controller.hpp"
+#include "robot_config.hpp"
 #include "pros/misc.hpp"
 
 using namespace ez;
+
+// File-scoped controller instances shared by all odom tasks.
+static LtvController     s_ltv;
+static RamseteController s_ramsete;
 
 void Drive::ez_auto_task() {
   while (true) {
@@ -177,21 +184,53 @@ void Drive::ptp_task() {
   a_target = new_turn_target_compute(a_target, odom_imu_start, current_angle_behavior);
   double wrapped_a_target = util::wrap_angle(a_target - odom_theta_get());
   current_a_odomPID.compute_error(wrapped_a_target, odom_theta_get());
-  // printf("shortest_a_target: %.2f      error: %.2f\n", a_target, wrapped_a_target);
+
+  // ── LTV / RAMSETE feedback path ────────────────────────────────────────
+  if (odom_feedback_type != PID_FEEDBACK) {
+    float cx = (float)odom_x_get();
+    float cy = (float)odom_y_get();
+    float ct = (float)odom_theta_get();
+    float tx = (float)odom_target.x;
+    float ty = (float)odom_target.y;
+    float tt = (float)a_target;  // heading target from point-to-face
+
+    // Reference velocity: slew-limited max speed scaled to in/s,
+    // with deceleration proportional to remaining distance.
+    float remaining = (float)util::distance_to_point(odom_target, odom_pose_get());
+    float v_max     = (float)(max_slew_out * (RobotConfig::MAX_SPEED_INPS / 127.0));
+    float decel     = RobotConfig::MAX_ACCELERATION_INPS2 * 0.6f;
+    float v_ref     = std::min(v_max, std::sqrt(2.0f * decel * remaining));
+    v_ref          *= dir;
+
+    int left_cmd, right_cmd;
+    if (odom_feedback_type == LTV_FEEDBACK) {
+      auto cmd = s_ltv.calculate(cx, cy, ct, tx, ty, tt, v_ref, 0.0f);
+      left_cmd = cmd.left;  right_cmd = cmd.right;
+    } else {
+      auto cmd = s_ramsete.calculate(cx, cy, ct, tx, ty, tt, v_ref, 0.0f);
+      left_cmd = cmd.left;  right_cmd = cmd.right;
+    }
+
+    if (drive_toggle)
+      private_drive_set(left_cmd, right_cmd);
+
+    leftPID.compute(drive_sensor_left());
+    rightPID.compute(drive_sensor_right());
+    return;
+  }
+
+  // ── Original PID feedback path ─────────────────────────────────────────
 
   // Prioritize turning by scaling xy_out down
   double xy_out = xyPID.output;
   xy_out = util::clamp(xy_out, max_slew_out);
-  // double scale = cos(util::to_rad(current_a_odomPID.error)) / odom_turn_bias_amount;
-  double scale = 1.0 - ((1.0 - cos(util::to_rad(current_a_odomPID.error))) / odom_turn_bias_amount);  // 1 - ((1-0.7)/0.75)
+  double scale = 1.0 - ((1.0 - cos(util::to_rad(current_a_odomPID.error))) / odom_turn_bias_amount);
   scale = util::clamp(scale, 1.0, 0.0);
   if (odom_turn_bias_enabled())
     xy_out *= scale;
   double a_out = current_a_odomPID.output;
-  // a_out = util::clamp(a_out, max_slew_out);
 
   // Scale xy_out and a_out to max speed
-  // this ensures no data is lost that would otherwise by lost in clamping
   double faster_side = fmax(fabs(xy_out), fabs(a_out));
   if (faster_side > max_slew_out) {
     xy_out *= (max_slew_out / faster_side);
@@ -203,18 +242,11 @@ void Drive::ptp_task() {
   double r_out = xy_out - a_out;
 
   // Vector scaling when combining drive and imu
-  // this ensures no data is lost that would otherwise by lost in clamping
   faster_side = fmax(fabs(l_out), fabs(r_out));
   if (faster_side > max_slew_out) {
     l_out *= (max_slew_out / faster_side);
     r_out *= (max_slew_out / faster_side);
   }
-
-  // printf("lr out (%.2f, %.2f)   xy/a(%.2f, %.2f)   lr slew (%.2f, %.2f)\n", l_out, r_out, xy_out, a_out, slew_left.output(), slew_right.output());
-  // printf("max_slew_out %.2f      headingerr: %.2f\n", max_slew_out, aPID.error);
-  // printf("lr(%.2f, %.2f)   xy_raw: %.2f   xy_out: %.2f   heading_out: %.2f      max_slew_out: %.2f\n", l_out, r_out, xyPID.output, xy_out, current_a_odomPID.output, max_slew_out);
-  // printf("xy(%.2f, %.2f, %.2f)   xyPID: %.2f   aPID: %.2f     dir: %i   sgn: %i   past_target: %i    is_past_target: %i   is_past_using_xy: %i      fake_xy(%.2f, %.2f, %.2f)\n", odom_x_get(), odom_y_get(), odom_theta_get(), xyPID.target_get(), current_a_odomPID.target_get(), dir, flipped, past_target, (int)is_past_target(odom_target, odom_pose_get()), is_past_target_using_xy, fake_x, fake_y, util::to_deg(fake_angle));
-  // printf("xy(%.2f, %.2f, %.2f)   xyPID: %.2f   aPID: %.2f   ptf:(%.2f, %.2f)   xy/a(%.2f, %.2f)   lr(%.2f, %.2f)   fake xy: %.2f\n", odom_x_get(), odom_y_get(), odom_theta_get(), xyPID.error, current_a_odomPID.error, ptf.x, ptf.y, xy_out, a_out, l_out, r_out, new_current_fake);
 
   // Set motors
   if (drive_toggle)

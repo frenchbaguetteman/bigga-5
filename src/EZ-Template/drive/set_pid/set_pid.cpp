@@ -60,6 +60,9 @@ void Drive::pid_targets_reset() {
   backward_swingPID.target_set(0);
 }
 
+void Drive::odom_feedback_set(e_odom_feedback type) { odom_feedback_type = type; }
+e_odom_feedback Drive::odom_feedback_get() { return odom_feedback_type; }
+
 void Drive::drive_mode_set(e_mode p_mode, bool stop_drive) {
   mode = p_mode;
   if (mode == DISABLE && stop_drive)

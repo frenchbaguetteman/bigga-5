@@ -827,6 +827,20 @@ class Drive {
   double odom_look_ahead_get();
 
   /**
+   * Sets the feedback controller used for odom point-to-point and pure pursuit motions.
+   * PID_FEEDBACK (default), LTV_FEEDBACK, or RAMSETE_FEEDBACK.
+   *
+   * \param type
+   *        ez::PID_FEEDBACK, ez::LTV_FEEDBACK, or ez::RAMSETE_FEEDBACK
+   */
+  void odom_feedback_set(e_odom_feedback type);
+
+  /**
+   * Returns the current odom feedback controller type.
+   */
+  e_odom_feedback odom_feedback_get();
+
+  /**
    * Sets the parallel left tracking wheel for odometry.
    *
    * \param input
@@ -3470,6 +3484,7 @@ class Drive {
   double dlead = 0.5;
   double max_boomerang_distance = 12.0;
   double odom_turn_bias_amount = 1.375;
+  e_odom_feedback odom_feedback_type = PID_FEEDBACK;
   drive_directions current_drive_direction = fwd;
   double h_last = 0.0, t_last = 0.0, l_last = 0.0, r_last = 0.0;
   pose l_pose{0.0, 0.0, 0.0};
